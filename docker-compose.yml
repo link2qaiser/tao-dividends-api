@@ -1,0 +1,82 @@
+version: '3.8'
+
+services:
+  web:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      - API_TOKEN=${API_TOKEN}
+      - SECRET_KEY=${SECRET_KEY}
+      - ACCESS_TOKEN_EXPIRE_MINUTES=${ACCESS_TOKEN_EXPIRE_MINUTES}
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL}
+      - CACHE_TTL=${CACHE_TTL}
+      - BITTENSOR_CHAIN_ENDPOINT=${BITTENSOR_CHAIN_ENDPOINT}
+      - BITTENSOR_NETWORK=${BITTENSOR_NETWORK}
+      - DEFAULT_NETUID=${DEFAULT_NETUID}
+      - DEFAULT_HOTKEY=${DEFAULT_HOTKEY}
+      - WALLET_SEED=${WALLET_SEED}
+      - DATURA_API_KEY=${DATURA_API_KEY}
+      - CHUTES_API_KEY=${CHUTES_API_KEY}
+
+  worker:
+    build: .
+    command: celery -A app.worker.celery_app worker --loglevel=info --concurrency=1
+    volumes:
+      - .:/app
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      - API_TOKEN=${API_TOKEN}
+      - SECRET_KEY=${SECRET_KEY}
+      - ACCESS_TOKEN_EXPIRE_MINUTES=${ACCESS_TOKEN_EXPIRE_MINUTES}
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL}
+      - CACHE_TTL=${CACHE_TTL}
+      - BITTENSOR_CHAIN_ENDPOINT=${BITTENSOR_CHAIN_ENDPOINT}
+      - BITTENSOR_NETWORK=${BITTENSOR_NETWORK}
+      - DEFAULT_NETUID=${DEFAULT_NETUID}
+      - DEFAULT_HOTKEY=${DEFAULT_HOTKEY}
+      - WALLET_SEED=${WALLET_SEED}
+      - DATURA_API_KEY=${DATURA_API_KEY}
+      - CHUTES_API_KEY=${CHUTES_API_KEY}
+
+  db:
+    image: postgres:13
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    environment:
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_DB=${POSTGRES_DB:-tao_dividends}
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+      
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
